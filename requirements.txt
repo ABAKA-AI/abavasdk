@@ -1,0 +1,7 @@
+lxml~=4.9
+numpy~=1.25
+opencv_python~=4.8
+Pillow~=10.0
+Requests~=2.31
+tqdm~=4.66
+dynaconf~=3.2

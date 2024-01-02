@@ -1,0 +1,11 @@
+__pycache__/
+.DS_Store
+build/
+*.egg-info/
+.cache/
+.idea/
+test/
+dist/
+README.rst
+MANIFEST.in
+
