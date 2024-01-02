@@ -53,14 +53,9 @@ dynaconf~=3.2
 ## Installation
 ### Install with PyPi (pip)
 ```sh
-pip install abava_sdk
+pip install abava-sdk
 ```
 
-### Install with Anaconda (conda)
-
-```sh
-conda install -c conda-forge abava_sdk
-```
 ## What can we do
 ### Data Format
 + [ABAVA data -> COCO data](http://github.molardata.com/open/abavasdk/-/blob/main/abava/export_format/coco/export_coco.py)
