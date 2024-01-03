@@ -15,22 +15,22 @@
 [![docs](https://img.shields.io/badge/docs-latest-blue)](README.md)
 [![license](https://img.shields.io/github/license/mashape/apistatus)](LICENSE)
 
-
-
 </div>
 
-
 # ABAVA Data SDK | For Python
+
 Welcome to `ABAVA SDK`, an open-source Software Development Kit that forms the backbone of the ABAVA platform. Designed to convert data between ABAVA’s native format and widely-used, universal data structures such as COCO, YOLO, LABELME, KITTI, VOC, ABAVA SDK helps to streamline and simplify your data operations.
 
 The SDK is more than just a converter. It’s a swiss army knife of data processing tools. It comes loaded with an assortment of handy utility functions often used in data processing workflows, such as Calculate the area of a polygon or determine if a point is inside a polygon.
 
 Whether you’re moving data, cleaning data, transforming data, or just managing it, the ABAVA SDK has got you covered with powerful features that make your work simpler and easier. Built for developers, engineers and data scientists, this SDK aims to make your data-heavy processes more seamless and efficient.
 
-Stay tuned to get more details about the features, capabilities, and the simplicity ABAVA SDK brings to your data operations. 
+Stay tuned to get more details about the features, capabilities, and the simplicity ABAVA SDK brings to your data operations.
 
-Learn more about ABAVA [here](https://www.abaka.ai/)! 
+Learn more about ABAVA [here](https://www.abaka.ai/)!
+
 ## Overview
+
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [What can we do](#what-can-we-do)
@@ -40,6 +40,7 @@ Learn more about ABAVA [here](https://www.abaka.ai/)!
 - [License](#license)
 
 ## requirements
+
 ```sh
 python==3.9
 lxml~=4.9
@@ -50,13 +51,17 @@ Requests~=2.31
 tqdm~=4.66
 dynaconf~=3.2
 ```
+
 ## Installation
+
 ### Install with PyPi (pip)
+
 ```sh
 pip install abava-sdk
 ```
 
 ## What can we do
+
 ### Data Format
 + [ABAVA data -> COCO data](https://github.com/ABAKA-AI/abavasdk/blob/main/abava/export_format/coco/export_coco.py)
 + [ABAVA data -> LABELME data](https://github.com/ABAKA-AI/abavasdk/blob/main/abava/export_format/labelme/export_labelme.py)
@@ -121,6 +126,7 @@ pip install abava-sdk
 + [quaternion -> euler](https://github.com/ABAKA-AI/abavasdk/blob/main/abava/utils/pc_tools.py#L379)
 
 ## Usage
+
 ### get source data
 
 ```python
@@ -134,11 +140,12 @@ sk = Secret Key
 client = abava.Client(ak, sk)
 
 """
-After creating an export task, you can see the export task id of the corresponding task 
+After creating an export task, you can see the export task id of the corresponding task
 in "Import/Export"->"Data Export".
 """
 source_data = client.get_data(export_task_id)
 ```
+
 ### data format
 
 ```python
@@ -162,6 +169,7 @@ Visual.visual_coco(source_data, data_path, out_path)
 ```
 
 ### utils
+
 ```python
 def test_isin_external_rectangle():
     point = [55, 100]
@@ -181,28 +189,32 @@ def test_pcd2bin():
     pcd_path = './pcd'
     abavadata.pcd2bin(pcd_path, bin_path)
 ```
+
 Please refer to [examples.md](example/examples.md) to learn more usage about ABAVA SDK.
 
 ## Changelog
 
 [2023-11-29] Updated
-+ Optimize mask export
+
+- Optimize mask export
 
 [2023-10-12] New features:
-+ Support for interconversion of Euler angles, quaternions and rotation matrices
+
+- Support for interconversion of Euler angles, quaternions and rotation matrices
 
 [2023-08-31] New features:
-+ Support pinhole camera image de-distortion and fisheye camera image de-distortion
-+ Support point cloud random subsampling and voxel subsampling
-+ Support for removing points in the 3D box of the point cloud
-+ Support Quaternion to Euler angle
-+ Support PNP <br>
+
+- Support pinhole camera image de-distortion and fisheye camera image de-distortion
+- Support point cloud random subsampling and voxel subsampling
+- Support for removing points in the 3D box of the point cloud
+- Support Quaternion to Euler angle
+- Support PNP <br>
 
 [2023-07-21] ABAVA SDK v1.0.0 is released. <br>
 
 ## Contact Us
 
-+ wxj@molardata.com
+- wxj@molardata.com
 
 ## License
 
