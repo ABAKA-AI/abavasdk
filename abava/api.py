@@ -19,6 +19,6 @@ class API:
 
     def signature_auth_task(self, timestamp, task_id):
         data = {'ak': self.AccessKey, 'timestamp': timestamp, 'export_task_id': task_id}
-        h = hmac.new(general.to_bytes(self.SecretKey), general.to_bytes(json.dumps(data, separators=(',', ':'))),
+        h = hmac.new(general.s2bytes(self.SecretKey), general.s2bytes(json.dumps(data, separators=(',', ':'))),
                      hashlib.sha256)
         return base64.b64encode(h.digest()).decode()
