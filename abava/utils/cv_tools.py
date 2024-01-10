@@ -1,6 +1,7 @@
 # -*-coding:utf-8 -*-
 
 import base64
+import concurrent.futures
 import os
 import random
 import urllib.request
@@ -659,3 +660,46 @@ def undistort(image_path, camera_intrinstic, camera_dist, output_path):
     save_name = Path(image_path).parts[-1]
     os.makedirs(save_path, exist_ok=True)
     cv2.imwrite(os.path.join(save_path, save_name), undistort_image, [cv2.IMWRITE_JPEG_QUALITY, 100])
+
+
+def flip_images_in_folder(image_path, output_path, orien=1):
+    """
+    Batch Processing Image Flip
+    :param image_path: image path
+    :param output_path: output path
+    :param orien: Flipping parameters,
+    orien>0 flip horizontally, orien=0 flip vertically, orien<0 flip horizontally and vertically
+    :return:
+    """
+    def flip_image(filename):
+        if filename.endswith('.png') or filename.endswith('.jpg'):
+            img_path = os.path.join(image_path, filename)
+            img = cv2.imread(img_path)
+            flipped = cv2.flip(img, orien)
+            flipped_img_path = os.path.join(output_path, 'flipped_' + filename)
+            cv2.imwrite(flipped_img_path, flipped)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(flip_image, os.listdir(image_path))
+
+
+def rotate_images_in_folder(image_path, output_path, rotate):
+    """
+    Batch rotate images
+    :param image_path: image path
+    :param output_path: output path
+    :param rotate: angle of rotation
+    :return:
+    """
+    def rotate_image(filename):
+        if filename.endswith('.png') or filename.endswith('.jpg'):
+            img_path = os.path.join(image_path, filename)
+            img = cv2.imread(img_path)
+            rows, cols = img.shape[:2]
+            M = cv2.getRotationMatrix2D((cols/2, rows/2), rotate, 1)
+            rotated_img = cv2.warpAffine(img, M, (cols, rows))
+            rotated_img_path = os.path.join(output_path, 'rotated_' + filename)
+            cv2.imwrite(rotated_img_path, rotated_img)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(rotate_image, os.listdir(image_path))

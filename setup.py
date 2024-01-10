@@ -10,7 +10,7 @@ requirements = [r.strip() for r in requirements]
 
 setuptools.setup(
     name='Abava_SDK',
-    version='1.0.0',
+    version='1.0.2',
     description='abavaSDK',
     install_requires=requirements,
     long_description=open(
