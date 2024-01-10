@@ -28,7 +28,7 @@ class AbavaUnauthorizedException(AbavaException):
 
 class AbavaInternetException(AbavaException):
     "网络服务异常"
-    code = 402
+    code = 403
 
 
 class AbavaNoResourceException(AbavaException):

@@ -38,14 +38,15 @@ class Client:
             'Authorization': self.api.signature_auth_task(timestamp, export_task_id),
             'Content-Type': 'application/json'
         }
-        # print(self._generate_useragent(user_agent_extension))
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
-        json_data = str2dict(response.text)
-        # print(json_data)
-        if 'code' in json_data and json_data['code'] == 200:
-            return json_data['data']
-        elif 'status' in json_data and json_data['status'] == 404:
-            raise AbavaUnauthorizedException("Unauthorized! please check your ak/sk")
+        try:
+            json_data = str2dict(response.text)
+            if 'code' in json_data and json_data['code'] == 200:
+                return json_data['data']
+            elif 'status' in json_data and json_data['status'] == 404:
+                raise AbavaUnauthorizedException("Unauthorized! please check your ak/sk")
+        except:
+            raise AbavaCommonException("Unknown error! Please contact us")
 
 
 class Export(object):
