@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ..exception import AbavaParameterException
 
 
-def read_pcd(pcd_path, FIELDS):
+def read_pcd(pcd_path):
     """
     read pcd file
     :param pcd_path:
@@ -26,9 +26,30 @@ def read_pcd(pcd_path, FIELDS):
 
     headers = {}
     for line in header:
-        if line.startswith('FIELDS'):
+        if line.startswith('VERSION'):
+            fields = line.strip().split()
+            headers['VERSION'] = fields[1:]
+        elif line.startswith('FIELDS'):
             fields = line.strip().split()
             headers['FIELDS'] = fields[1:]
+        elif line.startswith('SIZE'):
+            sizes = line.strip().split()
+            headers['SIZE'] = sizes[1:]
+        elif line.startswith('TYPE'):
+            types = line.strip().split()
+            headers['TYPE'] = types[1:]
+        elif line.startswith('COUNT'):
+            counts = line.strip().split()
+            headers['COUNT'] = counts[1:]
+        elif line.startswith('WIDTH'):
+            counts = line.strip().split()
+            headers['WIDTH'] = counts[1:]
+        elif line.startswith('HEIGHT'):
+            counts = line.strip().split()
+            headers['HEIGHT'] = counts[1:]
+        elif line.startswith('VIEWPOINT'):
+            counts = line.strip().split()
+            headers['VIEWPOINT'] = counts[1:]
         elif line.startswith('POINTS'):
             num_points = int(line.strip().split()[1])
             headers['POINTS'] = num_points
@@ -37,15 +58,6 @@ def read_pcd(pcd_path, FIELDS):
             data_type = line.split()[1]
             headers['DATA'] = data_type
             headers['data_start'] = data_start
-        elif line.startswith('TYPE'):
-            types = line.strip().split()
-            headers['TYPE'] = types[1:]
-        elif line.startswith('SIZE'):
-            sizes = line.strip().split()
-            headers['SIZE'] = sizes[1:]
-        elif line.startswith('COUNT'):
-            counts = line.strip().split()
-            headers['COUNT'] = counts[1:]
 
     type_size_map = {('U', '1'): np.uint8, ('U', '2'): np.uint16, ('U', '4'): np.uint32,
                      ('F', '4'): np.float32,
@@ -63,7 +75,7 @@ def read_pcd(pcd_path, FIELDS):
                 _ = f.readline()
             data = f.read()
         names = headers["FIELDS"]
-        offset = dict(zip(FIELDS, [None] * len(FIELDS)))
+        offset = dict(zip(names, [None] * len(names)))
         offset_keys = list(offset.keys())
         for idx, key in enumerate(offset_keys):
             if idx == 0:
@@ -86,10 +98,10 @@ def read_pcd(pcd_path, FIELDS):
                     data[offset[offset_keys[j]] + offset_row: offset_row + offset[offset_keys[j]] + int(size)],
                     dtype=type_size_map[(field_type, size)])
 
-    return pc_points
+    return pc_points, headers.pop('data_start')
 
 
-def write_pcd(points, out_path, head):
+def write_pcd(points, out_path, head=None):
     """
     write pcd file
     :param points: 2-d np.array
@@ -101,6 +113,13 @@ def write_pcd(points, out_path, head):
         "COUNT": ["1", "1", "1", "1"] }
     :return:
     """
+    if head is None:
+        head = {
+            "FIELDS": ["x", "y", "z", "intensity"],
+            "SIZE": ["4", "4", "4", "4"],
+            "TYPE": ["F", "F", "F", "F"],
+            "COUNT": ["1", "1", "1", "1"]
+        }
     point_num = points.shape[0]
     handle = open(out_path, 'w')
     handle.write(
@@ -118,7 +137,7 @@ def write_pcd(points, out_path, head):
     handle.close()
 
 
-def pcd2bin(pcd_folder, bin_folder, fields=None):
+def pcd2bin(pcd_folder, bin_folder):
     """
     pcd convert to bin
     :param fields: pcd FIELDS
@@ -126,35 +145,44 @@ def pcd2bin(pcd_folder, bin_folder, fields=None):
     :param bin_folder:
     :return:
     """
-    if fields is None:
-        fields = ['x', 'y', 'z', 'intensity']
     pcd_paths = glob.glob(pcd_folder + '/*.pcd')
     for pcd_path in tqdm(pcd_paths):
-        data = read_pcd(pcd_path, fields)
+        data = read_pcd(pcd_path)
         data.tofile(join(bin_folder, Path(pcd_path).parts[-1].replace('.pcd', '.bin')))
 
 
-def bin2pcd(bin_path, pcd_path, FIELDS=None):
+def bin2pcd(bin_path, pcd_path, head=None):
     """
     Convert point cloud bin format to pcd format
     :param bin_path: bin folder path
     :param pcd_path: pcd folder path
+    :param head: {
+        "FIELDS": ["x", "y", "z", "intensity"],
+        "SIZE": ["4", "4", "4", "4"],
+        "TYPE": ["F", "F", "F", "F"],
+        "COUNT": ["1", "1", "1", "1"] }
     :return: pcd file
     """
-    if FIELDS is None:
-        FIELDS = ['x', 'y', 'z', 'intensity']
     try:
         if not (os.path.isdir(pcd_path)):
             os.makedirs(os.path.join(pcd_path))
     except OSError as e:
         raise
 
+    if head is None:
+        head = {
+            "FIELDS": ["x", "y", "z", "intensity"],
+            "SIZE": ["4", "4", "4", "4"],
+            "TYPE": ["F", "F", "F", "F"],
+            "COUNT": ["1", "1", "1", "1"]
+        }
+
     print("Converting Start!")
     bin_files = glob.glob(bin_path + '/*.bin')
     for bin_file in tqdm(bin_files):
         pcd_url = join(pcd_path, Path(bin_file).parts[-1].replace('.bin', '.pcd'))
-        points = np.fromfile(bin_file, dtype="float32").reshape((-1, len(FIELDS)))
-        write_pcd(points, pcd_url, FIELDS)
+        points = np.fromfile(bin_file, dtype="float32").reshape((-1, len(head['FIELDS'])))
+        write_pcd(points, pcd_url, head)
 
 
 def filter_points_in_boxes(pcd_file, boxes_list):
@@ -197,7 +225,7 @@ def voxel_subsample_keep_intensity(pcd_path, intensity, voxel_size, output_path=
     :param output_path: Point cloud file save path
     :return:
     """
-    pc_points = read_pcd(pcd_path)[:, :4]
+    pc_points, headers = read_pcd(pcd_path)[:, :4]
     # We default the first four columns of the point cloud to x, y, z, intensity
     points_intensity = pc_points[(pc_points[:, 3] >= intensity[0]) & (pc_points[:, 3] <= intensity[1])]
     points_other = pc_points[(pc_points[:, 3] < intensity[0]) | (pc_points[:, 3] > intensity[1])]
@@ -205,7 +233,13 @@ def voxel_subsample_keep_intensity(pcd_path, intensity, voxel_size, output_path=
     voxel_indices = np.unique(voxel_coords, axis=0, return_index=True)[1]
     downsampled_points_other = points_other[voxel_indices]
     final_points = np.concatenate((points_intensity, downsampled_points_other), axis=0)
-    write_pcd(final_points, output_path, ['x', 'y', 'z', 'intensity'])
+    head = {
+        "FIELDS": headers['FIELDS'],
+        "SIZE": headers['SIZE'],
+        "TYPE": headers['TYPE'],
+        "COUNT": headers['COUNT']
+    }
+    write_pcd(final_points, output_path, head)
 
 
 def random_subsample_keep_intensity(pcd_path, intensity, sampling_ratio, output_path='./subsampled.pcd'):
@@ -217,7 +251,7 @@ def random_subsample_keep_intensity(pcd_path, intensity, sampling_ratio, output_
     :param output_path: Point cloud file save path
     :return:
     """
-    pc_points = read_pcd(pcd_path)[:, :4]
+    pc_points, headers = read_pcd(pcd_path)[:, :4]
     points_intensity_20_200 = pc_points[(pc_points[:, 3] >= intensity[0]) & (pc_points[:, 3] <= intensity[1])]
     points_other = pc_points[(pc_points[:, 3] < intensity[0]) | (pc_points[:, 3] > intensity[1])]
     num_points = points_other.shape[0]
@@ -225,7 +259,13 @@ def random_subsample_keep_intensity(pcd_path, intensity, sampling_ratio, output_
     sampled_indices = np.random.choice(num_points, num_sampled_points, replace=False)
     downsampled_points_other = points_other[sampled_indices]
     final_points = np.concatenate((points_intensity_20_200, downsampled_points_other), axis=0)
-    write_pcd(final_points, output_path, ['x', 'y', 'z', 'intensity'])
+    head = {
+        "FIELDS": headers['FIELDS'],
+        "SIZE": headers['SIZE'],
+        "TYPE": headers['TYPE'],
+        "COUNT": headers['COUNT']
+    }
+    write_pcd(final_points, output_path, head)
 
 
 def pnp_compute_Rt(obj_points, img_points, intrinsic, distortion):
