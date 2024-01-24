@@ -1,6 +1,7 @@
 # -*-coding:utf-8 -*-
 import glob
 import math
+import struct
 from os.path import join
 from pathlib import Path
 import cv2
@@ -64,7 +65,7 @@ def read_pcd(pcd_path):
                      ('I', '1'): np.int8, ('I', '2'): np.int16, ('I', '4'): np.int32}
 
     data = []
-    num_fields = len(headers['FIELDS']) - 1
+    num_fields = len(headers['FIELDS'])
     if headers['DATA'] == 'ascii':
         for line in header[headers['data_start']:]:
             data.append(list(map(float, line.strip().split(' '))))
@@ -97,11 +98,12 @@ def read_pcd(pcd_path):
                 pc_points[i][j] = np.frombuffer(
                     data[offset[offset_keys[j]] + offset_row: offset_row + offset[offset_keys[j]] + int(size)],
                     dtype=type_size_map[(field_type, size)])
+    headers.pop('data_start')
 
-    return pc_points, headers.pop('data_start')
+    return pc_points, headers
 
 
-def write_pcd(points, out_path, head=None):
+def write_pcd(points, out_path, head=None, data_mode='ascii'):
     """
     write pcd file
     :param points: 2-d np.array
@@ -111,6 +113,7 @@ def write_pcd(points, out_path, head=None):
         "SIZE": ["4", "4", "4", "4"],
         "TYPE": ["F", "F", "F", "F"],
         "COUNT": ["1", "1", "1", "1"] }
+    :param data_mode: ascii, binary
     :return:
     """
     if head is None:
@@ -121,20 +124,39 @@ def write_pcd(points, out_path, head=None):
             "COUNT": ["1", "1", "1", "1"]
         }
     point_num = points.shape[0]
-    handle = open(out_path, 'w')
-    handle.write(
-        f'# .PCD v0.7 - Point Cloud Data file format\nVERSION 0.7\nFIELDS {" ".join(head["FIELDS"])}\nSIZE {" ".join(head["SIZE"])}\nTYPE {" ".join(head["TYPE"])}\nCOUNT {" ".join(head["COUNT"])}')
-    string = '\nWIDTH ' + str(point_num)
-    handle.write(string)
-    handle.write('\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0')
-    string = '\nPOINTS ' + str(point_num)
-    handle.write(string)
-    handle.write('\nDATA ascii')
-    for i in range(point_num):
-        str_points = [str(p) for p in points[i]]
-        string = '\n' + ' '.join(str_points)
-        handle.write(string)
-    handle.close()
+
+    header = f'# .PCD v0.7 - Point Cloud Data file format\n' \
+             f'VERSION 0.7\n' \
+             f'FIELDS {" ".join(head["FIELDS"])}\n' \
+             f'SIZE {" ".join(head["SIZE"])}\n' \
+             f'TYPE {" ".join(head["TYPE"])}\n' \
+             f'COUNT {" ".join(head["COUNT"])}\n' \
+             f'WIDTH {point_num}\n' \
+             'HEIGHT 1\n' \
+             'VIEWPOINT 0 0 0 1 0 0 0\n' \
+             f'POINTS {point_num}\n' \
+             f'DATA {data_mode}'
+
+    if data_mode == 'ascii':
+        handle = open(out_path, 'w')
+        handle.write(header)
+        for point in points:
+            str_points = [str(p) for p in point]
+            string = '\n' + ' '.join(str_points)
+            handle.write(string)
+        handle.close()
+    elif data_mode == 'binary':
+        handle = open(out_path, 'wb')
+        handle.write(header.encode())
+        handle.write(b'\n')
+        pack_string = ''.join(head['TYPE']).lower()
+        for point in points:
+            binary_data = b''
+            for idx, pack in enumerate(pack_string):
+                temp_data = struct.pack(pack, float(point[idx]))
+                binary_data += temp_data
+            handle.write(binary_data)
+        handle.close()
 
 
 def pcd2bin(pcd_folder, bin_folder):
@@ -183,6 +205,32 @@ def bin2pcd(bin_path, pcd_path, head=None):
         pcd_url = join(pcd_path, Path(bin_file).parts[-1].replace('.bin', '.pcd'))
         points = np.fromfile(bin_file, dtype="float32").reshape((-1, len(head['FIELDS'])))
         write_pcd(points, pcd_url, head)
+
+
+def pcd_ascii2binary(input_file, output_file):
+    point_data, headers = read_pcd(input_file)
+    head = {
+        "FIELDS": headers['FIELDS'],
+        "SIZE": headers['SIZE'],
+        "TYPE": headers['TYPE'],
+        "COUNT": headers['COUNT']
+    }
+    write_pcd(point_data, output_file, head, data_mode='binary')
+
+    print('Conversion complete!')
+
+
+def pcd_binary2ascii(input_file, output_file):
+    point_data, headers = read_pcd(input_file)
+    head = {
+        "FIELDS": headers['FIELDS'],
+        "SIZE": headers['SIZE'],
+        "TYPE": headers['TYPE'],
+        "COUNT": headers['COUNT']
+    }
+    write_pcd(point_data, output_file, head, data_mode='ascii')
+
+    print('Conversion complete!')
 
 
 def filter_points_in_boxes(pcd_file, boxes_list):
