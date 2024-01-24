@@ -101,20 +101,8 @@ class Export(object):
         cls.export_f.export_yolo_product(source_data, out_path, mapping).abava_json2yolo()
 
     @classmethod
-    def b_mask(cls, source_data, out_path=None, mapping=None):
-        cls.export_f.export_mask_product(source_data, out_path, mapping).b_mask()
-
-    @classmethod
-    def b_mask_plus(cls, source_data, out_path=None, mapping=None):
-        cls.export_f.export_mask_product(source_data, out_path, mapping).b_mask_plus()
-
-    @classmethod
     def p_mask(cls, source_data, out_path=None, mapping=None):
         cls.export_f.export_mask_product(source_data, out_path, mapping).p_mask()
-
-    @classmethod
-    def p_mask_plus(cls, source_data, out_path=None, mapping=None):
-        cls.export_f.export_mask_product(source_data, out_path, mapping).p_mask_plus()
 
 
 class Visual(object):
