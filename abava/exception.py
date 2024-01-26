@@ -41,5 +41,6 @@ class AbavaDrawTypeException(AbavaException):
     code = 405
 
 
-class AbavaCommonException(AbavaException):
+class AbavaNotImplementException(AbavaException):
+    "未实现"
     code = 406

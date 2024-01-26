@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import os
 from tqdm import tqdm
-from ..exception import AbavaParameterException
+from ..exception import AbavaParameterException, AbavaNotImplementException
 
 
 def read_pcd(pcd_path):
@@ -98,8 +98,13 @@ def read_pcd(pcd_path):
                 pc_points[i][j] = np.frombuffer(
                     data[offset[offset_keys[j]] + offset_row: offset_row + offset[offset_keys[j]] + int(size)],
                     dtype=type_size_map[(field_type, size)])
-    headers.pop('data_start')
+    elif headers['DATA'] == 'binary_compressed':
+        # TODO: binary_compressed
+        raise AbavaNotImplementException('Temporarily unable to read binary_compressed data.')
+    else:
+        raise 'Unknown pcd data type.'
 
+    headers.pop('data_start')
     return pc_points, headers
 
 
@@ -159,7 +164,7 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
         handle.close()
 
 
-def pcd2bin(pcd_folder, bin_folder):
+def pcd2bin(pcd_path, out_path):
     """
     pcd convert to bin
     :param fields: pcd FIELDS
@@ -167,10 +172,8 @@ def pcd2bin(pcd_folder, bin_folder):
     :param bin_folder:
     :return:
     """
-    pcd_paths = glob.glob(pcd_folder + '/*.pcd')
-    for pcd_path in tqdm(pcd_paths):
-        data = read_pcd(pcd_path)
-        data.tofile(join(bin_folder, Path(pcd_path).parts[-1].replace('.pcd', '.bin')))
+    data, headers = read_pcd(pcd_path)
+    data.tofile(join(out_path, Path(pcd_path).parts[-1].replace('.pcd', '.bin')))
 
 
 def bin2pcd(bin_path, pcd_path, head=None):
@@ -240,7 +243,7 @@ def filter_points_in_boxes(pcd_file, boxes_list):
     @param point_cloud: (N, 3) numpy.ndarray, N points.
     @param boxes_list: list of boxes with format [x, y, z, roll, pitch, yaw, length, width, height].
     """
-    point_cloud = read_pcd(pcd_file)
+    point_cloud, headers = read_pcd(pcd_file)
     try:
         intensity_point = point_cloud[:, 3]
     except:
