@@ -50,13 +50,6 @@ def test_pmask2polygons():
     return polygon
 
 
-def test_bmask2polygons():
-    # 2-value single-channel image
-    folder_path = ''
-    polygon = abava.bmask2polygons(folder_path)
-    return polygon
-
-
 def test_mask2rle():
     image_path = "../example_files/images/test_polygon.png"
     mask_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
