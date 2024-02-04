@@ -1,13 +1,9 @@
 # -*-coding:utf-8 -*-
-import glob
 import math
 import struct
-from os.path import join
-from pathlib import Path
 import cv2
 import numpy as np
 import os
-from tqdm import tqdm
 from ..exception import AbavaParameterException, AbavaNotImplementException
 
 
@@ -173,14 +169,14 @@ def pcd2bin(pcd_path, out_path):
     :return:
     """
     data, headers = read_pcd(pcd_path)
-    data.tofile(join(out_path, Path(pcd_path).parts[-1].replace('.pcd', '.bin')))
+    data.tofile(out_path)
 
 
 def bin2pcd(bin_path, pcd_path, head=None):
     """
     Convert point cloud bin format to pcd format
-    :param bin_path: bin folder path
-    :param pcd_path: pcd folder path
+    :param bin_path: bin file path
+    :param pcd_folder: pcd folder path
     :param head: {
         "FIELDS": ["x", "y", "z", "intensity"],
         "SIZE": ["4", "4", "4", "4"],
@@ -203,11 +199,8 @@ def bin2pcd(bin_path, pcd_path, head=None):
         }
 
     print("Converting Start!")
-    bin_files = glob.glob(bin_path + '/*.bin')
-    for bin_file in tqdm(bin_files):
-        pcd_url = join(pcd_path, Path(bin_file).parts[-1].replace('.bin', '.pcd'))
-        points = np.fromfile(bin_file, dtype="float32").reshape((-1, len(head['FIELDS'])))
-        write_pcd(points, pcd_url, head)
+    points = np.fromfile(bin_path, dtype="float32").reshape((-1, len(head['FIELDS'])))
+    write_pcd(points, pcd_path, head)
 
 
 def pcd_ascii2binary(input_file, output_file):
@@ -433,17 +426,17 @@ def quaternion_to_rotation_matrix(q):
     if Nq < np.finfo(float).eps:
         return np.identity(3)
     s = 2.0 / Nq
-    X = x * s;
-    Y = y * s;
+    X = x * s
+    Y = y * s
     Z = z * s
-    wX = w * X;
-    wY = w * Y;
+    wX = w * X
+    wY = w * Y
     wZ = w * Z
-    xX = x * X;
-    xY = x * Y;
+    xX = x * X
+    xY = x * Y
     xZ = x * Z
-    yY = y * Y;
-    yZ = y * Z;
+    yY = y * Y
+    yZ = y * Z
     zZ = z * Z
     return np.array([
         [1.0 - (yY + zZ), xY - wZ, xZ + wY],
