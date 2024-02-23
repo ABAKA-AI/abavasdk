@@ -72,15 +72,28 @@ def read_pcd(pcd_path):
                 _ = f.readline()
             data = f.read()
         names = headers["FIELDS"]
-        offset = dict(zip(names, [None] * len(names)))
+
+        counter_dict = {}
+        new_names = []
+        for i, el in enumerate(names):
+            if names.count(el) > 1:
+                if el not in counter_dict:
+                    counter_dict[el] = 1
+                else:
+                    counter_dict[el] += 1
+                new_names.append(el + str(counter_dict[el]))
+            else:
+                new_names.append(el)
+
+        offset = dict(zip(new_names, [None] * len(new_names)))
         offset_keys = list(offset.keys())
         for idx, key in enumerate(offset_keys):
             if idx == 0:
                 offset[key] = 0
             else:
                 if key in headers['FIELDS']:
-                    offset[key] = sum(x * y for x, y in zip([int(i) for i in headers['SIZE'][:names.index(key)]],
-                                                            [int(i) for i in headers['COUNT'][:names.index(key)]]))
+                    offset[key] = sum(x * y for x, y in zip([int(i) for i in headers['SIZE'][:new_names.index(key)]],
+                                                            [int(i) for i in headers['COUNT'][:new_names.index(key)]]))
                 else:
                     raise AbavaParameterException(f"pcd FIELDS without specified key({key})")
         offset['row'] = sum(
@@ -158,6 +171,11 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
                 binary_data += temp_data
             handle.write(binary_data)
         handle.close()
+    elif data_mode == 'binary_compressed':
+        # TODO: binary_compressed
+        raise AbavaNotImplementException('Temporarily unable to read binary_compressed data.')
+    else:
+        raise 'Unknown pcd data type.'
 
 
 def pcd2bin(pcd_path, out_path):
