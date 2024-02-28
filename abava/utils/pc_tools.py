@@ -1,13 +1,9 @@
 # -*-coding:utf-8 -*-
-import glob
 import math
 import struct
-from os.path import join
-from pathlib import Path
 import cv2
 import numpy as np
 import os
-from tqdm import tqdm
 from ..exception import AbavaParameterException, AbavaNotImplementException
 
 
@@ -76,15 +72,28 @@ def read_pcd(pcd_path):
                 _ = f.readline()
             data = f.read()
         names = headers["FIELDS"]
-        offset = dict(zip(names, [None] * len(names)))
+
+        counter_dict = {}
+        new_names = []
+        for i, el in enumerate(names):
+            if names.count(el) > 1:
+                if el not in counter_dict:
+                    counter_dict[el] = 1
+                else:
+                    counter_dict[el] += 1
+                new_names.append(el + str(counter_dict[el]))
+            else:
+                new_names.append(el)
+
+        offset = dict(zip(new_names, [None] * len(new_names)))
         offset_keys = list(offset.keys())
         for idx, key in enumerate(offset_keys):
             if idx == 0:
                 offset[key] = 0
             else:
                 if key in headers['FIELDS']:
-                    offset[key] = sum(x * y for x, y in zip([int(i) for i in headers['SIZE'][:names.index(key)]],
-                                                            [int(i) for i in headers['COUNT'][:names.index(key)]]))
+                    offset[key] = sum(x * y for x, y in zip([int(i) for i in headers['SIZE'][:new_names.index(key)]],
+                                                            [int(i) for i in headers['COUNT'][:new_names.index(key)]]))
                 else:
                     raise AbavaParameterException(f"pcd FIELDS without specified key({key})")
         offset['row'] = sum(
@@ -162,6 +171,11 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
                 binary_data += temp_data
             handle.write(binary_data)
         handle.close()
+    elif data_mode == 'binary_compressed':
+        # TODO: binary_compressed
+        raise AbavaNotImplementException('Temporarily unable to read binary_compressed data.')
+    else:
+        raise 'Unknown pcd data type.'
 
 
 def pcd2bin(pcd_path, out_path):
@@ -173,14 +187,14 @@ def pcd2bin(pcd_path, out_path):
     :return:
     """
     data, headers = read_pcd(pcd_path)
-    data.tofile(join(out_path, Path(pcd_path).parts[-1].replace('.pcd', '.bin')))
+    data.tofile(out_path)
 
 
 def bin2pcd(bin_path, pcd_path, head=None):
     """
     Convert point cloud bin format to pcd format
-    :param bin_path: bin folder path
-    :param pcd_path: pcd folder path
+    :param bin_path: bin file path
+    :param pcd_folder: pcd folder path
     :param head: {
         "FIELDS": ["x", "y", "z", "intensity"],
         "SIZE": ["4", "4", "4", "4"],
@@ -203,11 +217,8 @@ def bin2pcd(bin_path, pcd_path, head=None):
         }
 
     print("Converting Start!")
-    bin_files = glob.glob(bin_path + '/*.bin')
-    for bin_file in tqdm(bin_files):
-        pcd_url = join(pcd_path, Path(bin_file).parts[-1].replace('.bin', '.pcd'))
-        points = np.fromfile(bin_file, dtype="float32").reshape((-1, len(head['FIELDS'])))
-        write_pcd(points, pcd_url, head)
+    points = np.fromfile(bin_path, dtype="float32").reshape((-1, len(head['FIELDS'])))
+    write_pcd(points, pcd_path, head)
 
 
 def pcd_ascii2binary(input_file, output_file):
@@ -433,17 +444,17 @@ def quaternion_to_rotation_matrix(q):
     if Nq < np.finfo(float).eps:
         return np.identity(3)
     s = 2.0 / Nq
-    X = x * s;
-    Y = y * s;
+    X = x * s
+    Y = y * s
     Z = z * s
-    wX = w * X;
-    wY = w * Y;
+    wX = w * X
+    wY = w * Y
     wZ = w * Z
-    xX = x * X;
-    xY = x * Y;
+    xX = x * X
+    xY = x * Y
     xZ = x * Z
-    yY = y * Y;
-    yZ = y * Z;
+    yY = y * Y
+    yZ = y * Z
     zZ = z * Z
     return np.array([
         [1.0 - (yY + zZ), xY - wZ, xZ + wY],
