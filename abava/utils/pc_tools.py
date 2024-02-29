@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import os
 from ..exception import AbavaParameterException, AbavaNotImplementException
+from scipy.spatial.transform import Rotation as R
 
 
 def read_pcd(pcd_path):
@@ -501,3 +502,31 @@ def quaternion_to_euler(x, y, z, w):
     yaw_z = math.atan2(t3, t4)
 
     return roll_x, pitch_y, yaw_z
+
+
+def box2corners(points):
+    """
+    Convert 3d box (7 numbers) to 8 corners (21 numbers)
+    :param points: x, y, z, roll, pitch, yaw, length, width, height
+    :return:
+    """
+    x, y, z, roll, pitch, yaw, length, width, height = points
+    dx = length / 2
+    dy = width / 2
+    dz = height / 2
+
+    r = R.from_euler('xyz', [-roll, -pitch, -yaw])
+
+    corners = np.array([
+        [dx, dy, dz],
+        [-dx, dy, dz],
+        [-dx, -dy, dz],
+        [dx, -dy, dz],
+        [dx, dy, -dz],
+        [-dx, dy, -dz],
+        [-dx, -dy, -dz],
+        [dx, -dy, -dz]
+    ])
+
+    rotated_corners = r.apply(corners, inverse=True)
+    return rotated_corners + np.array([x, y, z])
