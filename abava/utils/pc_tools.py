@@ -511,22 +511,36 @@ def box2corners(points):
     :return:
     """
     x, y, z, roll, pitch, yaw, length, width, height = points
-    dx = length / 2
-    dy = width / 2
-    dz = height / 2
-
-    r = R.from_euler('xyz', [-roll, -pitch, -yaw])
 
     corners = np.array([
-        [dx, dy, dz],
-        [-dx, dy, dz],
-        [-dx, -dy, dz],
-        [dx, -dy, dz],
-        [dx, dy, -dz],
-        [-dx, dy, -dz],
-        [-dx, -dy, -dz],
-        [dx, -dy, -dz]
+        [-length / 2, -width / 2, -height / 2],
+        [length / 2, -width / 2, -height / 2],
+        [length / 2, width / 2, -height / 2],
+        [-length / 2, width / 2, -height / 2],
+        [-length / 2, -width / 2, height / 2],
+        [length / 2, -width / 2, height / 2],
+        [length / 2, width / 2, height / 2],
+        [-length / 2, width / 2, height / 2]
     ])
 
-    rotated_corners = r.apply(corners, inverse=True)
-    return rotated_corners + np.array([x, y, z])
+    Rx = np.array([
+        [1, 0, 0],
+        [0, np.cos(roll), -np.sin(roll)],
+        [0, np.sin(roll), np.cos(roll)]
+    ])
+    Ry = np.array([
+        [np.cos(pitch), 0, np.sin(pitch)],
+        [0, 1, 0],
+        [-np.sin(pitch), 0, np.cos(pitch)]
+    ])
+    Rz = np.array([
+        [np.cos(yaw), -np.sin(yaw), 0],
+        [np.sin(yaw), np.cos(yaw), 0],
+        [0, 0, 1]
+    ])
+    R = np.dot(Rz, np.dot(Ry, Rx))
+
+    corners = np.dot(corners, R.T)
+    corners += np.array([x, y, z])
+
+    return corners
