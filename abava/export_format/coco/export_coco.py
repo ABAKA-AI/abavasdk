@@ -86,7 +86,9 @@ class ExportCoco(ExportData):
                     segmentation.append(round(points[0], 2))
                     segmentation.append(round(points[3], 2))
 
-                    bbox = [round(points[0], 2), round(points[1], 2), round((points[2] - points[0]), 2),
+                    bbox = [round(points[0], 2),
+                            round(points[1], 2),
+                            round((points[2] - points[0]), 2),
                             round((points[3] - points[1]), 2)]
                     area = bbox[2] * bbox[3]
 
@@ -111,8 +113,10 @@ class ExportCoco(ExportData):
                     coco_annotation.area = area
                     coco_annotation.iscrowd = 0
                     coco_annotation.image_id = image_id
-                    coco_annotation.bbox = [float(round(min(x), 2)), float(round(min(y), 2)),
-                                            float(round(max(x), 2)), float(round(max(y), 2))]
+                    coco_annotation.bbox = [float(round(min(x), 2)),
+                                            float(round(min(y), 2)),
+                                            (float(round(max(x), 2)) - float(round(min(x), 2))) + 1,
+                                            (float(round(max(y), 2)) - float(round(min(y), 2))) + 1]
                     coco_annotation.category_id = labels.index(label)
                     coco_annotation.id = id
 
@@ -121,16 +125,19 @@ class ExportCoco(ExportData):
                 elif drawType == 'MASK' or drawType == 'MASK_BLOCK':
                     points = l.data.points
                     area = 0
-                    min_x = 0
-                    min_y = 0
-                    max_x = 0
-                    max_y = 0
+                    min_x = float('inf')
+                    min_y = float('inf')
+                    max_x = float('-inf')
+                    max_y = float('-inf')
                     for idx, point_list in enumerate(points):
                         point_list = np.array(point_list).reshape(-1, 2)
-                        if idx == 0:
+                        if min(point_list[:, 0]) < min_x:
                             min_x = min(point_list[:, 0])
+                        if min(point_list[:, 1]) < min_y:
                             min_y = min(point_list[:, 1])
+                        if max(point_list[:, 0]) > max_x:
                             max_x = max(point_list[:, 0])
+                        if max(point_list[:, 1]) > max_y:
                             max_y = max(point_list[:, 1])
                         area += calculate_polygon_area(point_list)
 
@@ -138,8 +145,10 @@ class ExportCoco(ExportData):
                     coco_annotation.area = area
                     coco_annotation.iscrowd = 0
                     coco_annotation.image_id = image_id
-                    coco_annotation.bbox = [float(round(min_x, 2)), float(round(min_y, 2)),
-                                            float(round(max_x, 2)), float(round(max_y, 2))]
+                    coco_annotation.bbox = [float(round(min_x, 2)),
+                                            float(round(min_y, 2)),
+                                            (float(round(max_x, 2)) - float(round(min_x, 2))) + 1,
+                                            (float(round(max_y, 2)) - float(round(min_y, 2))) + 1]
                     coco_annotation.category_id = labels.index(label)
                     coco_annotation.id = id
 
@@ -162,3 +171,4 @@ class ExportCoco(ExportData):
 
         file_name = self.source_data.task.name + '.json'
         self.save_labels(self.abava2dict(COCO), file_name)
+

@@ -32,10 +32,6 @@ class ExportData():
                 out_root = join('./labels', sub_folder)
             else:
                 out_root = './labels/'
-            if not os.path.exists(out_root):
-                os.makedirs(out_root)
-            with open(join(out_root, filename), 'w', encoding='utf-8') as write_f:
-                json.dump(final_data, write_f, indent=2, ensure_ascii=False)
         else:
             file_path = 'labels'
             if sub_folder:
@@ -43,10 +39,11 @@ class ExportData():
                 out_root = join(base_root, sub_folder)
             else:
                 out_root = join(self.out_path, file_path)
-            if not os.path.exists(out_root):
-                os.makedirs(out_root)
-            with open(join(out_root, filename), 'w', encoding='utf-8') as write_f:
-                json.dump(final_data, write_f, indent=2, ensure_ascii=False)
+
+        if not os.path.exists(out_root):
+            os.makedirs(out_root)
+        with open(join(out_root, filename), 'w', encoding='utf-8') as write_f:
+            json.dump(final_data, write_f, indent=2, ensure_ascii=False)
 
     def abava2dict(self, data):
         """
