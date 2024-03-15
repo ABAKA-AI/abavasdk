@@ -5,7 +5,6 @@ import cv2
 import numpy as np
 import os
 from ..exception import AbavaParameterException, AbavaNotImplementException
-from scipy.spatial.transform import Rotation as R
 
 
 def read_pcd(pcd_path):
