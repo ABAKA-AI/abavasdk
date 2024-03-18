@@ -163,7 +163,7 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
         handle = open(out_path, 'wb')
         handle.write(header.encode())
         handle.write(b'\n')
-        pack_string = ''.join(head['TYPE']).lower()
+        pack_string = 'f' * len(head['TYPE'])
         for point in points:
             binary_data = b''
             for idx, pack in enumerate(pack_string):
