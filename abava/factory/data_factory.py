@@ -13,6 +13,7 @@ from ..visualize.labelme.visual_labelme import VisualLabelme
 from ..visualize.source.visual_source import VisualSource
 from ..visualize.voc.visual_voc import VisualVoc
 from ..visualize.yolo.visual_yolo import VisualYolo
+from ..post_process.coco.coco_postprocess import CocoProcess
 
 
 class DataFactory():
@@ -72,6 +73,10 @@ class DataFactory():
 
     @abstractmethod
     def statistics_product(self, source_data):
+        pass
+
+    @abstractmethod
+    def postprocess_coco_prodect(self, data_path, out_path=None):
         pass
 
 
@@ -141,3 +146,12 @@ class CheckFactory(DataFactory):
     def statistics_product(self, source_data):
         print(self.type, "process has been created.")
         return Statistic(source_data)
+
+
+class PostProcessFactory(DataFactory):
+    def __init__(self):
+        self.type = "PostProcess"
+
+    def post_process_product(self, data_path, out_path=None):
+        print(self.type, "post-process has been created.")
+        return CocoProcess(data_path, out_path)

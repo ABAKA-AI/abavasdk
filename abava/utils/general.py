@@ -80,7 +80,7 @@ def find_last(string, substring):
         if string[i] == substring:
             return i
         if i == 0:
-            raise AbavaCommonException("Sorry! We haven't found the Search Character in this string ")
+            raise AbavaUnknownException("Sorry! We haven't found the Search Character in this string ")
 
 
 def s2bytes(data):

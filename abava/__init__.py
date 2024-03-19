@@ -11,7 +11,7 @@ from .utils.pc_tools import *
 from .check.statistics import *
 from .exception import *
 from .const import *
-from .factory.data_factory import ExportFactory, ImportFactory, VisualFactory, CheckFactory
+from .factory.data_factory import ExportFactory, ImportFactory, VisualFactory, CheckFactory, PostProcessFactory
 
 
 class Client:
@@ -39,14 +39,12 @@ class Client:
             'Content-Type': 'application/json'
         }
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
-        try:
-            json_data = str2dict(response.text)
-            if 'code' in json_data and json_data['code'] == 200:
-                return json_data['data']
-            elif 'status' in json_data and json_data['status'] == 404:
-                raise AbavaUnauthorizedException("Unauthorized! please check your ak/sk")
-        except:
-            raise AbavaCommonException("Unknown error! Please contact us")
+
+        json_data = str2dict(response.text)
+        if 'code' in json_data and json_data['code'] == 200:
+            return json_data['data']
+        else:
+            raise Exception(json_data['message'])
 
 
 class Export(object):
@@ -65,7 +63,7 @@ class Export(object):
         cls.export_f.export_coco_product(source_data, out_path, mapping).sam_json2coco_cover()
 
     @classmethod
-    def abava_json2odkitti(cls, source_data, out_path=None, mapping=None):
+    def abava_json2kitti(cls, source_data, out_path=None, mapping=None):
         cls.export_f.export_kitti_product(source_data, out_path, mapping).abava_json2odkitti()
 
     @classmethod
@@ -166,3 +164,15 @@ class Check(object):
     def labeled_images(cls, source_data):
         count = cls.check_f.statistics_product(source_data).labeled_images()
         return count
+
+
+class PostProcess(object):
+    postprocess_f = PostProcessFactory()
+
+    @classmethod
+    def coco_split(cls, data_path, out_pat=None, test_size=0.3, train_size=None, shuffle=True):
+        cls.postprocess_f.post_process_product(data_path, out_pat).split(test_size, train_size, shuffle)
+
+    @classmethod
+    def coco_merge(cls, data_path, out_pat=None):
+        cls.postprocess_f.post_process_product(data_path, out_pat).split()
