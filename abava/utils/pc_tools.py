@@ -1,9 +1,13 @@
 # -*-coding:utf-8 -*-
 import math
+import re
 import struct
+import time
+
 import cv2
 import numpy as np
 import os
+import dask.dataframe as dd
 from ..exception import AbavaParameterException, AbavaNotImplementException
 
 
@@ -14,65 +18,50 @@ def read_pcd(pcd_path):
     :return:
     """
     global pc_points
+    headers_lines = 11
     try:
         with open(pcd_path, 'r') as f:
-            header = f.readlines()
+            header = [next(f) for _ in range(headers_lines)]
     except UnicodeDecodeError:
         with open(pcd_path, 'rb') as f:
-            header = [line.decode('ISO-8859-1') for line in f]
+            header = [next(f).decode('ISO-8859-1') for _ in range(headers_lines)]
 
     headers = {}
-    for line in header:
-        if line.startswith('VERSION'):
+    pattern = re.compile(r'(VERSION|FIELDS|SIZE|TYPE|COUNT|WIDTH|HEIGHT|VIEWPOINT|POINTS|DATA)')
+    for i, line in enumerate(header):
+        match = pattern.match(line)
+        if match:
             fields = line.strip().split()
-            headers['VERSION'] = fields[1:]
-        elif line.startswith('FIELDS'):
-            fields = line.strip().split()
-            headers['FIELDS'] = fields[1:]
-        elif line.startswith('SIZE'):
-            sizes = line.strip().split()
-            headers['SIZE'] = sizes[1:]
-        elif line.startswith('TYPE'):
-            types = line.strip().split()
-            headers['TYPE'] = types[1:]
-        elif line.startswith('COUNT'):
-            counts = line.strip().split()
-            headers['COUNT'] = counts[1:]
-        elif line.startswith('WIDTH'):
-            counts = line.strip().split()
-            headers['WIDTH'] = counts[1:]
-        elif line.startswith('HEIGHT'):
-            counts = line.strip().split()
-            headers['HEIGHT'] = counts[1:]
-        elif line.startswith('VIEWPOINT'):
-            counts = line.strip().split()
-            headers['VIEWPOINT'] = counts[1:]
-        elif line.startswith('POINTS'):
-            num_points = int(line.strip().split()[1])
-            headers['POINTS'] = num_points
-        elif line.startswith('DATA'):
-            data_start = header.index(line) + 1
-            data_type = line.split()[1]
-            headers['DATA'] = data_type
-            headers['data_start'] = data_start
+            key = match.group()
+            if key == 'DATA':
+                headers[key] = fields[1]
+                headers['data_start'] = i + 1
+            elif key == 'POINTS':
+                headers[key] = int(fields[1])
+            else:
+                headers[key] = fields[1:]
 
     type_size_map = {('U', '1'): np.uint8, ('U', '2'): np.uint16, ('U', '4'): np.uint32,
                      ('F', '4'): np.float32,
                      ('I', '1'): np.int8, ('I', '2'): np.int16, ('I', '4'): np.int32}
 
-    data = []
     num_fields = len(headers['FIELDS'])
     if headers['DATA'] == 'ascii':
-        for line in header[headers['data_start']:]:
-            data.append(list(map(float, line.strip().split(' '))))
-        pc_points = np.array(data, dtype=np.float32).reshape((-1, num_fields))
+        dtypes = {idx: type_size_map[(type, headers['SIZE'][idx])] for idx, type in enumerate(headers['TYPE'])}
+        df = dd.read_csv(pcd_path, skiprows=headers['data_start'], sep=" ", header=None, assume_missing=True,
+                         dtype=dtypes)
+        pc_points = df.to_dask_array(lengths=True).reshape((-1, num_fields)).compute()
+
     elif headers['DATA'] == 'binary':
         with open(pcd_path, 'rb') as f:
             for _ in range(headers['data_start']):
                 _ = f.readline()
-            data = f.read()
-        names = headers["FIELDS"]
+            dtype_list = [(name, type_size_map[(field_type, size)]) for name, field_type, size in
+                          zip(headers["FIELDS"], headers['TYPE'], headers["SIZE"])]
+            dt = np.dtype(dtype_list)
+            data = np.fromfile(f, dtype=dt)
 
+        names = headers["FIELDS"]
         counter_dict = {}
         new_names = []
         for i, el in enumerate(names):
@@ -85,28 +74,12 @@ def read_pcd(pcd_path):
             else:
                 new_names.append(el)
 
-        offset = dict(zip(new_names, [None] * len(new_names)))
-        offset_keys = list(offset.keys())
-        for idx, key in enumerate(offset_keys):
-            if idx == 0:
-                offset[key] = 0
-            else:
-                if key in headers['FIELDS']:
-                    offset[key] = sum(x * y for x, y in zip([int(i) for i in headers['SIZE'][:new_names.index(key)]],
-                                                            [int(i) for i in headers['COUNT'][:new_names.index(key)]]))
-                else:
-                    raise AbavaParameterException(f"pcd FIELDS without specified key({key})")
-        offset['row'] = sum(
-            x * y for x, y in zip([int(i) for i in headers['SIZE']], [int(i) for i in headers['COUNT']]))
-        pc_points = np.zeros((headers['POINTS'], len(offset) - 1), dtype=np.float32)
-        for i in range(headers['POINTS']):
-            offset_row = i * offset['row']
-            for j in range(len(offset) - 1):
-                size = headers['SIZE'][headers['FIELDS'].index(offset_keys[j])]
-                field_type = headers['TYPE'][headers['FIELDS'].index(offset_keys[j])]
-                pc_points[i][j] = np.frombuffer(
-                    data[offset[offset_keys[j]] + offset_row: offset_row + offset[offset_keys[j]] + int(size)],
-                    dtype=type_size_map[(field_type, size)])
+        for old_name, new_name in zip(names, new_names):
+            data.dtype.names = [name.replace(old_name, new_name) for name in data.dtype.names]
+
+        pc_points = np.zeros((headers['POINTS'], len(new_names)), dtype=np.float32)
+        for i, name in enumerate(data.dtype.names):
+            pc_points[:, i] = data[name]
     elif headers['DATA'] == 'binary_compressed':
         # TODO: binary_compressed
         raise AbavaNotImplementException('Temporarily unable to read binary_compressed data.')
@@ -150,6 +123,9 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
              'VIEWPOINT 0 0 0 1 0 0 0\n' \
              f'POINTS {point_num}\n' \
              f'DATA {data_mode}'
+    type_map = {('U', '1'): 'B', ('U', '2'): 'H', ('U', '4'): 'I',
+                ('F', '4'): 'f',
+                ('I', '1'): 'c', ('I', '2'): 'h', ('I', '4'): 'i'}
 
     if data_mode == 'ascii':
         handle = open(out_path, 'w')
@@ -160,17 +136,21 @@ def write_pcd(points, out_path, head=None, data_mode='ascii'):
             handle.write(string)
         handle.close()
     elif data_mode == 'binary':
-        handle = open(out_path, 'wb')
-        handle.write(header.encode())
-        handle.write(b'\n')
-        pack_string = 'f' * len(head['TYPE'])
-        for point in points:
-            binary_data = b''
-            for idx, pack in enumerate(pack_string):
-                temp_data = struct.pack(pack, float(point[idx]))
-                binary_data += temp_data
-            handle.write(binary_data)
-        handle.close()
+        with open(out_path, 'wb') as handle:
+            handle.write(header.encode())
+            handle.write(b'\n')
+
+            pack_string = ''.join([type_map[(type, head['SIZE'][idx])] for idx, type in enumerate(head['TYPE'])])
+            points_string = []
+
+            for point in points:
+                binary_data = [
+                    struct.pack(pack, float(point[idx])) if pack == 'f' else struct.pack(pack, int(point[idx])) for
+                    idx, pack in enumerate(pack_string)]
+                points_string.append(b''.join(binary_data))
+
+            handle.write(b''.join(points_string))
+
     elif data_mode == 'binary_compressed':
         # TODO: binary_compressed
         raise AbavaNotImplementException('Temporarily unable to read binary_compressed data.')
@@ -222,7 +202,10 @@ def bin2pcd(bin_path, pcd_path, head=None):
 
 
 def pcd_ascii2binary(input_file, output_file):
+    start = time.time()
     point_data, headers = read_pcd(input_file)
+    end = time.time()
+    print('read time:', end - start)
     head = {
         "FIELDS": headers['FIELDS'],
         "SIZE": headers['SIZE'],
